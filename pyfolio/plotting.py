@@ -602,7 +602,7 @@ STAT_FUNCS_PCT = [
 
 def show_perf_stats(returns, factor_returns, positions=None,
                     transactions=None, live_start_date=None,
-                    bootstrap=False):
+                    bootstrap=False, return_df = False):
     """
     Prints some performance metrics of the strategy.
 
@@ -685,9 +685,14 @@ def show_perf_stats(returns, factor_returns, positions=None,
             ('All', perf_stats_all),
         ]), axis=1)
     else:
-        print('Backtest months: ' +
-              str(int(len(returns) / APPROX_BDAYS_PER_MONTH)))
-        perf_stats = pd.DataFrame(perf_stats_all, columns=['Backtest'])
+        perf_stats = pd.DataFrame.from_items([
+            ("Backtest start date", [returns.index[0].strftime('%Y-%m-%d')]),
+            ("Backtest end date", [returns.index[-1].strftime('%Y-%m-%d')]),
+            ('Backtest months', [str(int(len(returns) / APPROX_BDAYS_PER_MONTH))])
+        ], orient='index', columns=['Backtest'])
+        perf_stats = perf_stats.append(
+            pd.DataFrame(perf_stats_all, columns=['Backtest'])
+        )
 
     for column in perf_stats.columns:
         for stat, value in perf_stats[column].iteritems():
@@ -695,7 +700,10 @@ def show_perf_stats(returns, factor_returns, positions=None,
                 perf_stats.loc[stat, column] = str(np.round(value * 100,
                                                             1)) + '%'
 
-    utils.print_table(perf_stats, fmt='{0:.2f}')
+    if return_df:
+        return perf_stats
+    else:
+        utils.print_table(perf_stats, fmt='{0:.2f}')
 
 
 def plot_returns(returns,
@@ -1669,7 +1677,7 @@ def plot_txn_time_hist(transactions, bin_minutes=5, tz='America/New_York',
     return ax
 
 
-def show_worst_drawdown_periods(returns, top=5):
+def show_worst_drawdown_periods(returns, top=5, return_df=False):
     """
     Prints information about the worst drawdown periods.
 
@@ -1686,9 +1694,17 @@ def show_worst_drawdown_periods(returns, top=5):
     """
 
     drawdown_df = timeseries.gen_drawdown_table(returns, top=top)
-    utils.print_table(drawdown_df.sort_values('Net drawdown in %',
-                                              ascending=False),
-                      name='Worst drawdown periods', fmt='{0:.2f}')
+    
+    drawdown_df.index.name = 'Worst drawdown periods'
+    
+    if return_df:
+        return drawdown_df.sort_values('Net drawdown in %', ascending=False)
+    else:
+        utils.print_table(drawdown_df.sort_values('Net drawdown in %',
+                                                  ascending=False),
+                          name='Worst drawdown periods', fmt='{0:.2f}')
+    
+
 
 
 def plot_monthly_returns_timeseries(returns, ax=None, **kwargs):

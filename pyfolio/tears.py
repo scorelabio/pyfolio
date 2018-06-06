@@ -75,7 +75,8 @@ def create_full_tear_sheet(returns,
                            shares_held=None,
                            volumes=None,
                            percentile=None,
-                           set_context=True):
+                           set_context=True,
+                           return_fig=False):
     """
     Generate a number of tear sheets that are useful
     for analyzing a strategy's performance.
@@ -170,7 +171,7 @@ def create_full_tear_sheet(returns,
     positions = utils.check_intraday(estimate_intraday, returns,
                                      positions, transactions)
 
-    create_returns_tear_sheet(
+    fig_returns, perf_stats, drawdown_df = create_returns_tear_sheet(
         returns,
         positions=positions,
         transactions=transactions,
@@ -178,24 +179,29 @@ def create_full_tear_sheet(returns,
         cone_std=cone_std,
         benchmark_rets=benchmark_rets,
         bootstrap=bootstrap,
-        set_context=set_context)
+        set_context=set_context,
+        return_fig=return_fig)
 
-    create_interesting_times_tear_sheet(returns,
+    fig_interesting_times, stress_events = create_interesting_times_tear_sheet(returns,
                                         benchmark_rets=benchmark_rets,
-                                        set_context=set_context)
+                                        set_context=set_context,
+                                        return_fig=return_fig)
 
     if positions is not None:
-        create_position_tear_sheet(returns, positions,
+        fig_position_times = create_position_tear_sheet(returns, positions,
                                    hide_positions=hide_positions,
                                    set_context=set_context,
                                    sector_mappings=sector_mappings,
-                                   estimate_intraday=False)
+                                   estimate_intraday=False,
+                                   return_fig=return_fig,
+                                   show_and_plot_top_pos=0 if return_fig else 2)
 
         if transactions is not None:
-            create_txn_tear_sheet(returns, positions, transactions,
+            fig_txn = create_txn_tear_sheet(returns, positions, transactions,
                                   unadjusted_returns=unadjusted_returns,
                                   estimate_intraday=False,
-                                  set_context=set_context)
+                                  set_context=set_context,
+                                  return_fig=return_fig)
             if round_trips:
                 create_round_trip_tear_sheet(
                     returns=returns,
@@ -219,6 +225,11 @@ def create_full_tear_sheet(returns,
                                    live_start_date=live_start_date,
                                    benchmark_rets=benchmark_rets,
                                    set_context=set_context)
+        
+    if return_fig:
+        return fig_returns, perf_stats, drawdown_df,\
+               fig_interesting_times, stress_events,\
+               fig_position_times, fig_txn
 
 
 def create_simple_tear_sheet(returns,
@@ -448,13 +459,14 @@ def create_returns_tear_sheet(returns, positions=None,
     print("Entire data start date: %s" % returns.index[0].strftime('%Y-%m-%d'))
     print("Entire data end date: %s" % returns.index[-1].strftime('%Y-%m-%d'))
 
-    plotting.show_perf_stats(returns, benchmark_rets,
+    perf_stats = plotting.show_perf_stats(returns, benchmark_rets,
                              positions=positions,
                              transactions=transactions,
                              bootstrap=bootstrap,
-                             live_start_date=live_start_date)
+                             live_start_date=live_start_date,
+                             return_df=return_fig)
 
-    plotting.show_worst_drawdown_periods(returns)
+    drawdown_df = plotting.show_worst_drawdown_periods(returns, return_df=return_fig)
 
     # If the strategy's history is longer than the benchmark's, limit strategy
     if returns.index[0] < benchmark_rets.index[0]:
@@ -576,9 +588,10 @@ def create_returns_tear_sheet(returns, positions=None,
     for ax in fig.axes:
         plt.setp(ax.get_xticklabels(), visible=True)
 
-    plt.show()
     if return_fig:
-        return fig
+        return fig, perf_stats, drawdown_df
+    else:
+        plt.show()
 
 
 @plotting.customize
@@ -671,9 +684,10 @@ def create_position_tear_sheet(returns, positions,
     for ax in fig.axes:
         plt.setp(ax.get_xticklabels(), visible=True)
 
-    plt.show()
     if return_fig:
         return fig
+    else:
+        plt.show()
 
 
 @plotting.customize
@@ -752,9 +766,11 @@ def create_txn_tear_sheet(returns, positions, transactions,
     for ax in fig.axes:
         plt.setp(ax.get_xticklabels(), visible=True)
 
-    plt.show()
     if return_fig:
         return fig
+    else:
+        plt.show()
+        
 
 
 @plotting.customize
@@ -883,11 +899,15 @@ def create_interesting_times_tear_sheet(
                       'interesting times.', UserWarning)
         return
 
-    utils.print_table(pd.DataFrame(rets_interesting)
-                      .describe().transpose()
-                      .loc[:, ['mean', 'min', 'max']] * 100,
-                      name='Stress Events',
-                      fmt='{0:.2f}%')
+    stress_events = pd.DataFrame(rets_interesting)\
+                      .describe().transpose()\
+                      .loc[:, ['mean', 'min', 'max']] * 100
+    stress_events.index.name  = 'Stress Events'
+    
+    if not return_fig:
+        utils.print_table(stress_events,
+                          name='Stress Events',
+                          fmt='{0:.2f}%')
 
     if benchmark_rets is None:
         benchmark_rets = utils.get_symbol_rets('SPY')
@@ -920,9 +940,10 @@ def create_interesting_times_tear_sheet(
         ax.set_ylabel('Returns')
         ax.set_xlabel('')
 
-    plt.show()
     if return_fig:
-        return fig
+        return fig, stress_events
+    else:
+        plt.show()
 
 
 @plotting.customize
