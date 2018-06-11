@@ -494,6 +494,7 @@ def plot_drawdown_periods(returns, top=10, ax=None, **kwargs):
     ax.yaxis.set_major_formatter(FuncFormatter(y_axis_formatter))
 
     df_cum_rets = ep.cum_returns(returns, starting_value=1.0)
+    
     df_drawdowns = timeseries.gen_drawdown_table(returns, top=top)
 
     df_cum_rets.plot(ax=ax, **kwargs)
@@ -880,6 +881,8 @@ def plot_rolling_returns(returns,
 
 
 def plot_rolling_beta(returns, factor_returns, legend_loc='best',
+                      rolling_window_short = APPROX_BDAYS_PER_MONTH * 6,
+                      rolling_window_long = APPROX_BDAYS_PER_MONTH * 12,
                       ax=None, **kwargs):
     """
     Plots the rolling 6-month and 12-month beta versus date.
@@ -914,17 +917,17 @@ def plot_rolling_beta(returns, factor_returns, legend_loc='best',
     ax.set_title("Rolling portfolio beta to " + str(factor_returns.name))
     ax.set_ylabel('Beta')
     rb_1 = timeseries.rolling_beta(
-        returns, factor_returns, rolling_window=APPROX_BDAYS_PER_MONTH * 6)
+        returns, factor_returns, rolling_window=rolling_window_short)
     rb_1.plot(color='steelblue', lw=3, alpha=0.6, ax=ax, **kwargs)
     rb_2 = timeseries.rolling_beta(
-        returns, factor_returns, rolling_window=APPROX_BDAYS_PER_MONTH * 12)
+        returns, factor_returns, rolling_window=rolling_window_long)
     rb_2.plot(color='grey', lw=3, alpha=0.4, ax=ax, **kwargs)
     ax.axhline(rb_1.mean(), color='steelblue', linestyle='--', lw=3)
     ax.axhline(0.0, color='black', linestyle='-', lw=2)
 
     ax.set_xlabel('')
-    ax.legend(['6-mo',
-               '12-mo'],
+    ax.legend(['%.0f-mo' % (rolling_window_short / APPROX_BDAYS_PER_MONTH),
+               '%.0f-mo' % (rolling_window_long / APPROX_BDAYS_PER_MONTH)],
               loc=legend_loc, frameon=True, framealpha=0.5)
     ax.set_ylim((-1.0, 1.0))
     return ax
@@ -966,6 +969,7 @@ def plot_rolling_volatility(returns, factor_returns=None,
 
     rolling_vol_ts = timeseries.rolling_volatility(
         returns, rolling_window)
+    
     rolling_vol_ts.plot(alpha=.7, lw=3, color='orangered', ax=ax,
                         **kwargs)
     if factor_returns is not None:
@@ -974,7 +978,7 @@ def plot_rolling_volatility(returns, factor_returns=None,
         rolling_vol_ts_factor.plot(alpha=.7, lw=3, color='grey', ax=ax,
                                    **kwargs)
 
-    ax.set_title('Rolling volatility (6-month)')
+    ax.set_title('Rolling volatility (%.0f-month)' % (rolling_window / APPROX_BDAYS_PER_MONTH))
     ax.axhline(
         rolling_vol_ts.mean(),
         color='steelblue',

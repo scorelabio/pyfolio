@@ -76,7 +76,8 @@ def create_full_tear_sheet(returns,
                            volumes=None,
                            percentile=None,
                            set_context=True,
-                           return_fig=False):
+                           return_fig=False,
+                           rolling_window=utils.APPROX_BDAYS_PER_MONTH * 6):
     """
     Generate a number of tear sheets that are useful
     for analyzing a strategy's performance.
@@ -180,7 +181,8 @@ def create_full_tear_sheet(returns,
         benchmark_rets=benchmark_rets,
         bootstrap=bootstrap,
         set_context=set_context,
-        return_fig=return_fig)
+        return_fig=return_fig,
+        rolling_window=rolling_window)
 
     fig_interesting_times, stress_events = create_interesting_times_tear_sheet(returns,
                                         benchmark_rets=benchmark_rets,
@@ -411,7 +413,8 @@ def create_returns_tear_sheet(returns, positions=None,
                               cone_std=(1.0, 1.5, 2.0),
                               benchmark_rets=None,
                               bootstrap=False,
-                              return_fig=False):
+                              return_fig=False,
+                              rolling_window=utils.APPROX_BDAYS_PER_MONTH * 6):
     """
     Generate a number of plots for analyzing a strategy's returns.
 
@@ -551,30 +554,37 @@ def create_returns_tear_sheet(returns, positions=None,
     )
     ax_returns.set_title(
         'Returns')
-
+    
     plotting.plot_rolling_beta(
-        returns, benchmark_rets, ax=ax_rolling_beta)
-
+        returns, benchmark_rets, ax=ax_rolling_beta,
+        rolling_window_short=rolling_window,
+        rolling_window_long=2*rolling_window)
+    
     plotting.plot_rolling_volatility(
-        returns, factor_returns=benchmark_rets, ax=ax_rolling_volatility)
-
+        returns, factor_returns=benchmark_rets, ax=ax_rolling_volatility,
+        rolling_window=rolling_window)
+    
     plotting.plot_rolling_sharpe(
-        returns, ax=ax_rolling_sharpe)
-
+        returns, ax=ax_rolling_sharpe,
+        rolling_window=rolling_window)
+    
     plotting.plot_rolling_fama_french(
-        returns, ax=ax_rolling_risk)
-
+        returns, ax=ax_rolling_risk,
+        rolling_window=rolling_window)
+        
     # Drawdowns
     plotting.plot_drawdown_periods(
         returns, top=5, ax=ax_drawdown)
-
+    
     plotting.plot_drawdown_underwater(
         returns=returns, ax=ax_underwater)
-
+    
     plotting.plot_monthly_returns_heatmap(returns, ax=ax_monthly_heatmap)
+    
     plotting.plot_annual_returns(returns, ax=ax_annual_returns)
+    
     plotting.plot_monthly_returns_dist(returns, ax=ax_monthly_dist)
-
+    
     plotting.plot_return_quantiles(
         returns,
         live_start_date=live_start_date,
